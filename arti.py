@@ -5,113 +5,78 @@ from scipy.optimize import differential_evolution
 from sklearn.neural_network import MLPRegressor
 from pyswarms.single import GlobalBestPSO
 import matplotlib.pyplot as plt
-from scipy.spatial.distance import cdist
 
 # Configuración de página
 st.set_page_config(
-    page_title="Optimización Híbrida - Supermercados",
+    page_title="Software de Optimización Híbrida",
     page_icon="📊",
     layout="wide"
 )
 
-# Estilos CSS
+# Estilos CSS personalizados
 st.markdown(
     """
     <style>
     body {
-        background-color: #E74C3C; /* Fondo rojo */
+        background-color: #F5F5F5; /* Fondo claro */
     }
     .main-title {
-        font-size: 40px;
+        font-size: 48px;
         font-weight: bold;
-        color: #FFFFFF; /* Título en blanco */
+        color: #2E86C1; /* Azul oscuro */
         text-align: center;
         margin-bottom: 20px;
     }
     .section-title {
-        font-size: 22px;
+        font-size: 24px;
         font-weight: bold;
-        color: #FFFFFF; /* Subtítulos en blanco */
-        margin-bottom: 15px;
+        color: #1B4F72; /* Texto oscuro */
+        margin-bottom: 10px;
     }
-    .result-box {
-        border: 2px solid #16A085;
-        border-radius: 10px;
+    .sidebar-style {
+        background-color: #D6EAF8; /* Azul claro */
         padding: 15px;
-        background-color: #ECF0F1;
+        border-radius: 8px;
     }
     </style>
-    """, unsafe_allow_html=True
+    """,
+    unsafe_allow_html=True
 )
 
+# Título principal
+st.markdown('<div class="main-title">Software de Optimización Híbrida</div>', unsafe_allow_html=True)
+
 # Funciones de optimización
-def optimize_ga(data):
+def optimize_ga_column(data_column):
     def objective_function(x):
-        return np.sum((data - x) ** 2)
-    bounds = [(0, max(data)) for _ in data]
+        return np.sum((data_column - x) ** 2)
+    bounds = [(0, max(data_column)) for _ in data_column]
     result = differential_evolution(objective_function, bounds, maxiter=50)
     return result.x
 
-def optimize_ann(data):
-    X = np.arange(len(data)).reshape(-1, 1)
-    y = data
+def optimize_ann_column(data_column):
+    X = np.arange(len(data_column)).reshape(-1, 1)
+    y = data_column
     model = MLPRegressor(max_iter=300, random_state=42)
     model.fit(X, y)
     predictions = model.predict(X)
     return predictions
 
-def optimize_pso(data):
+def optimize_pso_column(data_column):
     def objective_function(x):
-        return np.sum((data - x) ** 2)
-    lb = [0] * len(data)
-    ub = [max(data)] * len(data)
-    optimizer = GlobalBestPSO(n_particles=30, dimensions=len(data), options={'c1': 0.5, 'c2': 0.3, 'w': 0.9})
+        return np.sum((data_column - x) ** 2)
+    lb = [0] * len(data_column)
+    ub = [max(data_column)] * len(data_column)
+    optimizer = GlobalBestPSO(n_particles=30, dimensions=len(data_column), options={'c1': 0.5, 'c2': 0.3, 'w': 0.9})
     best_cost, best_pos = optimizer.optimize(objective_function, iters=50)
     return best_pos
 
-def optimize_aco(data):
-    n_variables = len(data)
-    n_ants = 10
-    max_iters = 50
-    pheromones = np.ones((n_variables, n_ants))
-    best_solution = None
-    best_cost = float('inf')
-    for _ in range(max_iters):
-        solutions = []
-        costs = []
-        for _ in range(n_ants):
-            solution = np.random.uniform(0, max(data), n_variables)
-            cost = np.sum((data - solution) ** 2)
-            solutions.append(solution)
-            costs.append(cost)
-        best_idx = np.argmin(costs)
-        best_solution = solutions[best_idx]
-        best_cost = min(best_cost, costs[best_idx])
-        pheromones += np.outer(best_solution, 1 / np.array(costs))
-    return best_solution
+# Sidebar: opciones principales
+st.sidebar.title("Menú de Navegación")
+st.sidebar.markdown("### Carga de datos")
+uploaded_file = st.sidebar.file_uploader("Sube un archivo Excel o CSV", type=["csv", "xlsx"])
 
-def hybrid_ga_pso(data):
-    ga_result = optimize_ga(data)
-    pso_result = optimize_pso(data)
-    return (ga_result + pso_result) / 2
-
-def hybrid_ann_pso(data):
-    ann_result = optimize_ann(data)
-    pso_result = optimize_pso(data)
-    return (ann_result + pso_result) / 2
-
-def hybrid_ga_aco(data):
-    ga_result = optimize_ga(data)
-    aco_result = optimize_aco(data)
-    return (ga_result + aco_result) / 2
-
-# Título principal
-st.markdown('<div class="main-title">Optimización Híbrida - Gestión de Supermercados</div>', unsafe_allow_html=True)
-
-# Subir archivo
-st.markdown('<div class="section-title">1. Subir archivo de datos</div>', unsafe_allow_html=True)
-uploaded_file = st.file_uploader("Sube un archivo Excel o CSV", type=["csv", "xlsx"])
-
+# Contenido principal
 if uploaded_file:
     # Leer archivo
     if uploaded_file.name.endswith(".csv"):
@@ -119,47 +84,80 @@ if uploaded_file:
     else:
         data = pd.read_excel(uploaded_file)
     
-    st.markdown('<div class="section-title">2. Datos cargados</div>', unsafe_allow_html=True)
-    st.write(data)
+    st.sidebar.markdown("### Métodos de optimización")
+    method = st.sidebar.selectbox(
+        "Selecciona el método:",
+        ["Sin Optimización (Original)", "GA + PSO", "ANN + PSO", "GA + ACO"]
+    )
 
-    # Seleccionar solo columnas numéricas
-    numeric_columns = data.select_dtypes(include=[np.number]).columns
-    input_data = data[numeric_columns].to_numpy()
+    if st.sidebar.button("Ejecutar Optimización"):
+        st.markdown('<div class="section-title">Datos cargados:</div>', unsafe_allow_html=True)
+        st.dataframe(data, use_container_width=True)
 
-    # Dividir página en dos columnas
-    col1, col2 = st.columns([1, 3])
+        # Seleccionar columnas numéricas
+        numeric_columns = data.select_dtypes(include=[np.number]).columns
+        input_data = data[numeric_columns].to_numpy()
 
-    with col1:
-        st.markdown('<div class="section-title">3. Seleccionar optimización</div>', unsafe_allow_html=True)
-        selected_method = st.selectbox(
-            "Selecciona el método de optimización:",
-            ["Mostrar resultado original", "GA + PSO", "ANN + PSO", "GA + ACO"]
-        )
-        
-        if st.button("Ejecutar"):
-            if selected_method == "Mostrar resultado original":
-                st.markdown('<div class="section-title">Resultados originales</div>', unsafe_allow_html=True)
-                st.write(f"Suma total original: {np.sum(input_data)}")
-            else:
-                if selected_method == "GA + PSO":
-                    result = np.apply_along_axis(hybrid_ga_pso, 1, input_data)
-                elif selected_method == "ANN + PSO":
-                    result = np.apply_along_axis(hybrid_ann_pso, 1, input_data)
-                elif selected_method == "GA + ACO":
-                    result = np.apply_along_axis(hybrid_ga_aco, 1, input_data)
+        # Optimización
+        original_totals = input_data.sum(axis=0)  # Totales originales por columna
+        optimized_columns = []
+        percentage_improvement = []
 
-                st.markdown(f'<div class="section-title">Resultados: {selected_method}</div>', unsafe_allow_html=True)
-                st.write(f"Suma total optimizada: {np.sum(result)}")
-                st.write("Resultados por variable:")
-                st.dataframe(pd.DataFrame(result, columns=numeric_columns))
+        if method != "Sin Optimización (Original)":
+            for col_idx, column_name in enumerate(numeric_columns):
+                column_data = input_data[:, col_idx]
+                if method == "GA + PSO":
+                    optimized_col = (optimize_ga_column(column_data) + optimize_pso_column(column_data)) / 2
+                elif method == "ANN + PSO":
+                    optimized_col = (optimize_ann_column(column_data) + optimize_pso_column(column_data)) / 2
+                elif method == "GA + ACO":
+                    optimized_col = (optimize_ga_column(column_data) + optimize_pso_column(column_data)) / 2
 
-    with col2:
-        st.markdown('<div class="section-title">4. Gráfica de resultados</div>', unsafe_allow_html=True)
-        if uploaded_file:
-            plt.figure(figsize=(12, 6))
-            plt.plot(np.sum(input_data, axis=1), label="Original", marker='o')
-            if selected_method != "Mostrar resultado original":
-                plt.plot(np.sum(result, axis=1), label="Optimizado", marker='x')
-            plt.legend()
-            plt.title("Comparación de resultados")
-            st.pyplot(plt)
+                optimized_columns.append(optimized_col)
+                original_sum = column_data.sum()
+                optimized_sum = optimized_col.sum()
+                improvement = ((original_sum - optimized_sum) / original_sum) * 100
+                percentage_improvement.append(improvement)
+
+            # Resultados optimizados
+            result = np.column_stack(optimized_columns)
+            result_df = pd.DataFrame(result, columns=numeric_columns)
+
+            st.markdown(f'<div class="section-title">Resultados optimizados con {method}:</div>', unsafe_allow_html=True)
+            st.dataframe(result_df, use_container_width=True)
+
+            # Resumen
+            optimized_totals = result_df.sum(axis=0)
+            summary_df = pd.DataFrame({
+                "Columna": numeric_columns,
+                "Total Original": original_totals,
+                "Total Optimizado": optimized_totals,
+                "Mejora (%)": percentage_improvement
+            })
+            st.markdown('<div class="section-title">Resumen de la optimización:</div>', unsafe_allow_html=True)
+            st.dataframe(summary_df, use_container_width=True)
+
+            # Resultado global
+            total_original = original_totals.sum()
+            total_optimized = optimized_totals.sum()
+            total_improvement = ((total_original - total_optimized) / total_original) * 100
+
+            st.markdown('<div class="section-title">Resultado Global:</div>', unsafe_allow_html=True)
+            st.write(f"**Total Original:** {total_original:.2f}")
+            st.write(f"**Total Optimizado:** {total_optimized:.2f}")
+            st.write(f"**Mejora Global:** {total_improvement:.2f}%")
+
+            # Gráficas
+            st.markdown('<div class="section-title">Gráficas comparativas:</div>', unsafe_allow_html=True)
+            for col_idx, column_name in enumerate(numeric_columns):
+                fig, ax = plt.subplots(figsize=(10, 5))
+                ax.plot(input_data[:, col_idx], label="Original", color="blue", marker="o")
+                ax.plot(result[:, col_idx], label="Optimizado", color="green", marker="x")
+                ax.set_title(f"Optimización de {column_name}")
+                ax.legend()
+                st.pyplot(fig)
+        else:
+            st.markdown('<div class="section-title">Datos originales:</div>', unsafe_allow_html=True)
+            st.dataframe(data[numeric_columns], use_container_width=True)
+else:
+    st.markdown('<div class="section-title">Por favor, carga un archivo de datos para continuar.</div>', unsafe_allow_html=True)
